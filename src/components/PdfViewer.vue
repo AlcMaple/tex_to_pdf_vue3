@@ -28,13 +28,12 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from "vue";
+import { ref, watch, onMounted, nextTick } from "vue";
 import { ElMessage } from "element-plus";
 import * as pdfjsLib from "pdfjs-dist";
 
-// 确保使用相同版本的worker
-// 注意：版本号需要与安装的pdfjs-dist版本一致，根据错误信息应该是5.2.133
-pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker/pdf.worker.min.mjs";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const props = defineProps({
   pdfUrl: {
@@ -56,24 +55,30 @@ let renderTask = null;
 const renderPage = async (pageNum) => {
   if (!pdfDoc) return;
 
+  const canvas = pdfCanvas.value;
+  if (!canvas) {
+    console.error("Canvas 元素未找到");
+    return;
+  }
+
   try {
+    const containerWidth = canvas.parentElement.clientWidth || 800;
     const page = await pdfDoc.getPage(pageNum);
-    const viewport = page.getViewport({ scale: scale.value });
+    const viewport = page.getViewport({ scale: 1 });
+    const scaleRatio = containerWidth / viewport.width; // 计算缩放比例
+    const scaledViewport = page.getViewport({ scale: scaleRatio });
 
-    const canvas = pdfCanvas.value;
     const context = canvas.getContext("2d");
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
+    canvas.height = scaledViewport.height;
+    canvas.width = scaledViewport.width;
 
-    // 取消之前的渲染任务
     if (renderTask) {
       renderTask.cancel();
     }
 
-    // 创建新的渲染任务
     renderTask = page.render({
       canvasContext: context,
-      viewport: viewport,
+      viewport: scaledViewport,
     });
 
     await renderTask.promise;
@@ -91,17 +96,18 @@ const loadPdf = async (url) => {
   error.value = null;
 
   try {
-    console.log("开始加载PDF文档:", url);
-    // 对URL进行缓存破坏，避免浏览器缓存导致问题
     const pdfUrl = `${url}?t=${new Date().getTime()}`;
-    // 加载PDF文档
     pdfDoc = await pdfjsLib.getDocument(pdfUrl).promise;
-    console.log("PDF文档加载成功, 页数:", pdfDoc.numPages);
     numPages.value = pdfDoc.numPages;
 
-    // 渲染第一页
-    await renderPage(1);
+    // 设置 loading 为 false，确保 template 中 canvas 能被渲染
     loading.value = false;
+
+    // 等待 DOM 更新
+    await nextTick();
+
+    // 再调用渲染方法
+    await renderPage(1);
   } catch (err) {
     console.error("加载PDF文档失败:", err);
     loading.value = false;
@@ -127,16 +133,18 @@ const nextPage = () => {
 // 监听pdfUrl的变化
 watch(
   () => props.pdfUrl,
-  (newUrl) => {
+  async (newUrl) => {
     if (newUrl) {
+      await nextTick(); // 等待DOM更新，确保canvas已挂载
       loadPdf(newUrl);
     }
   }
 );
 
 // 组件挂载后加载PDF
-onMounted(() => {
+onMounted(async () => {
   if (props.pdfUrl) {
+    await nextTick();
     loadPdf(props.pdfUrl);
   }
 });
@@ -156,14 +164,15 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   overflow: auto;
-  padding: 20px;
   background-color: #f9f9f9;
+  padding: 10px;
 }
 
 .pdf-canvas {
-  margin-top: 20px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  max-width: 100%;
+  height: auto;
   background-color: white;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
 }
 
 .page-controls {
