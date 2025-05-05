@@ -1,8 +1,8 @@
 <template>
   <div class="home">
-    <div class="header">
+    <!-- <div class="header">
       <h1>TeX在线编辑器</h1>
-    </div>
+    </div> -->
 
     <div class="main-content">
       <div class="editor-section">
@@ -12,11 +12,13 @@
             >编译</el-button
           >
         </div>
-        <TexEditor
-          ref="texEditor"
-          :initial-value="texCode"
-          @update:content="updateTexCode"
-        />
+        <div class="editor-container">
+          <TexEditor
+            ref="texEditor"
+            :initial-value="texCode"
+            @update:content="updateTexCode"
+          />
+        </div>
       </div>
 
       <div class="preview-section">
@@ -141,24 +143,21 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  overflow: hidden;
 }
 
 .header {
   padding: 10px 20px;
   background-color: #f0f2f5;
   border-bottom: 1px solid #dcdfe6;
-}
-
-.header h1 {
-  margin: 0;
-  font-size: 24px;
-  color: #303133;
+  z-index: 10;
 }
 
 .main-content {
   display: flex;
   flex: 1;
   overflow: hidden;
+  position: relative;
 }
 
 .editor-section,
@@ -166,25 +165,37 @@ onMounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
+  position: relative; /* 为绝对定位子元素做准备 */
   overflow: hidden;
-  padding: 10px;
 }
 
 .editor-section {
   border-right: 1px solid #dcdfe6;
 }
 
+/* 关键修改：固定标题区域在每个部分的顶部 */
 .section-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  padding: 10px;
+  background-color: white;
+  z-index: 5;
+  border-bottom: 1px solid #eaeaea;
+  height: 40px; /* 明确高度 */
 }
 
-.section-header h2 {
-  margin: 0;
-  font-size: 18px;
-  color: #303133;
+/* 为编辑器和预览区添加上边距，避免被标题覆盖 */
+.editor-container,
+.preview-container {
+  margin-top: 60px; /* 比section-header的高度多一点 */
+  height: calc(100% - 60px); /* 减去上边距 */
+  width: 100%;
+  overflow: auto;
 }
 
 .no-preview {

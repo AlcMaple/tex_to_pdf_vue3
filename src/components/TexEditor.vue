@@ -86,13 +86,21 @@ defineExpose({
 .tex-editor {
   height: 100%;
   width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .editor-container {
   height: 100%;
   width: 100%;
+  flex: 1;
   border: 1px solid #ddd;
   border-radius: 4px;
   overflow: auto;
+}
+
+/* 添加CodeMirror全局样式 */
+:global(.cm-editor) {
+  height: 100%;
 }
 </style>
